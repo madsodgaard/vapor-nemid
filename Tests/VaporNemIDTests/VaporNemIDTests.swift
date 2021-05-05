@@ -1,15 +1,12 @@
-import XCTest
-@testable import VaporNemID
+import XCTVapor
+import VaporNemID
 
 final class VaporNemIDTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(VaporNemID().text, "Hello, World!")
+    func test_defaultServices() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        
+        app.nemid.configuration = .init(spCertificate: "", serviceProviderID: "", environment: .preproduction)
+        XCTAssertTrue(app.nemid.login is LiveNemIDLoginService)
     }
-
-    static var allTests = [
-        ("testExample", testExample),
-    ]
 }
