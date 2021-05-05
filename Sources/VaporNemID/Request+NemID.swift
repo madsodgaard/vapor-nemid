@@ -10,7 +10,15 @@ extension Request {
         let request: Request
         
         public var login: NemIDLoginService {
-            request.application.nemid.login.delegating(to: request.eventLoop).logging(to: request.logger)
+            request.application.nemid.login
+                .delegating(to: request.eventLoop)
+                .logging(to: request.logger)
+        }
+        
+        public var matchService: NemIDPIDCPRMatchClient {
+            request.application.nemid.matchService
+                .delegating(to: request.eventLoop)
+                .logging(to: request.logger)
         }
     }
 }

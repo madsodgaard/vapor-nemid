@@ -9,6 +9,7 @@ extension Application {
     public struct NemID {
         final class Storage {
             var makeLoginService: ((Application) -> NemIDLoginService)?
+            var makePIDCPRService: ((Application) -> NemIDPIDCPRMatchClient)?
             var configuration: NemIDConfiguration?
             init() {}
         }
@@ -30,6 +31,7 @@ extension Application {
             application.storage[Key.self] = .init()
             
             application.nemid.logins.use(.live)
+            application.nemid.matchServices.use(.live)
         }
         
         public var configuration: NemIDConfiguration {
@@ -92,6 +94,57 @@ extension Application.NemID {
     public var login: NemIDLoginService {
         guard let factory = storage.makeLoginService else {
             fatalError("NemID login service not configured. Use app.nemid.use()")
+        }
+        return factory(application)
+    }
+}
+
+// MARK: PIDCPRMatchService
+extension Application.NemID {
+    public struct MatchServices {
+        public struct Provider {
+            let run: (Application) -> Void
+            
+            public init(_ run: @escaping (Application) -> Void) {
+                self.run = run
+            }
+            
+            public static var live: Self {
+                .init { app in
+                    app.nemid.matchServices.use {
+                        HTTPNemIDPIDCPRMatchClient(
+                            configuration: $0.nemid.configuration,
+                            eventLoop: $0.eventLoopGroup.next(),
+                            httpClient: $0.http.client.shared,
+                            logger: app.logger
+                        )
+                    }
+                }
+            }
+        }
+        
+        private let nemID: Application.NemID
+        
+        init(_ nemID: Application.NemID) {
+            self.nemID = nemID
+        }
+        
+        public func use(_ makeService: @escaping (Application) -> NemIDPIDCPRMatchClient) {
+            nemID.storage.makePIDCPRService = makeService
+        }
+        
+        public func use(_ provider: Provider) {
+            provider.run(nemID.application)
+        }
+    }
+    
+    public var matchServices: MatchServices {
+        .init(self)
+    }
+    
+    public var matchService: NemIDPIDCPRMatchClient {
+        guard let factory = storage.makePIDCPRService else {
+            fatalError("NemID PID-CPR match service not configured. Use app.nemid.matchServices.use()")
         }
         return factory(application)
     }
